@@ -15,7 +15,7 @@ const client = new Client({
 });
 
 const CHANNEL_ID = "1475491309245435994";
-const FLAG_INTERVAL = 15 * 60 * 1000;
+const FLAG_INTERVAL = 30 * 60 * 1000;
 const ROUND_TIME = 30 * 1000;
 
 let mode = "easy";
