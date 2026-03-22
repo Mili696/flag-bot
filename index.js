@@ -1,3 +1,4 @@
+const fs = require("fs");
 const { 
   Client, 
   GatewayIntentBits, 
@@ -131,6 +132,10 @@ const flags = [
 let currentFlag = null;
 let roundActive = false;
 let scores = {};
+
+if (fs.existsSync("scores.json")) {
+  scores = JSON.parse(fs.readFileSync("scores.json"));
+}
 let streaks = {};
 let currentMessage = null;
 
@@ -216,6 +221,7 @@ client.on("messageCreate", async (message) => {
     if (streaks[userId] >= 3) points = 2;
 
     scores[userId] = (scores[userId] || 0) + points;
+    fs.writeFileSync("scores.json", JSON.stringify(scores, null, 2));
 
     await message.react("✅");
 
