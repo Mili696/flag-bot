@@ -247,6 +247,10 @@ client.on("messageCreate", async (message) => {
 
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
+  client.user.setPresence({
+  activities: [{ name: "Guess the flags 🌍" }],
+  status: "online",
+});
   startRound();
   setInterval(startRound, FLAG_INTERVAL);
 });
