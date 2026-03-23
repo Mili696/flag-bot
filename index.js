@@ -85,7 +85,6 @@ let mode = "easy";
 
 // ================= FLAGS (FULL) =================
 const flags = [
-const flags = [
 { name:"afghanistan",aliases:[],url:"https://flagcdn.com/w320/af.png"},
 { name:"albania",aliases:[],url:"https://flagcdn.com/w320/al.png"},
 { name:"algeria",aliases:[],url:"https://flagcdn.com/w320/dz.png"},
