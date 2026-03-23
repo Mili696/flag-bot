@@ -360,5 +360,13 @@ client.once("clientReady", () => {
   startRound();
   setInterval(startRound, FLAG_INTERVAL);
 });
+client.on("guildCreate", (guild) => {
+  const allowedServer = "1434221318005588061";
+
+  if (guild.id !== allowedServer) {
+    console.log(`Left unauthorized server: ${guild.name}`);
+    guild.leave();
+  }
+});
 
 client.login(process.env.TOKEN);
