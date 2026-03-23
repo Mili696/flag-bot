@@ -3,7 +3,10 @@ const {
   Client, 
   GatewayIntentBits, 
   EmbedBuilder, 
-  Colors 
+  Colors,
+  REST,
+  Routes,
+  SlashCommandBuilder
 } = require('discord.js');
 
 const client = new Client({
@@ -15,100 +18,63 @@ const client = new Client({
 });
 
 const CHANNEL_ID = "1475491309245435994";
+const CLIENT_ID = "1485229970946002994";
 const FLAG_INTERVAL = 40 * 60 * 1000;
 const ROUND_TIME = 30 * 1000;
 
 let mode = "easy";
 
-// ================= Mili AI =================
+// ================= CONVO =================
+const activeConvos = {};
+const convoCooldown = {};
 
+const convoStarters = ["what do you need","you again","say it","go on"];
+const convoReplies = ["that’s it?","you talk a lot","and?","keep going","interesting"];
+const convoEnders = ["boring","I’m done with you","you ran out of ideas","as expected"];
+
+const loveReplies = ["you say that to everyone?","or am I special","that’s suspicious","noted"];
+const hateReplies = ["noted","still here though","you’ll survive","I don’t care"];
+
+function startConvo(userId) {
+  activeConvos[userId] = { step: 0, max: Math.floor(Math.random()*3)+2 };
+}
+
+// ================= AI =================
 let greetingCount = 0;
 let laughCount = 0;
 
-const swearWords = ["fuck", "shit", "wtf"];
-const deathWords = ["death", "dead", "die"];
-const boredWords = ["boring", "dead chat", "this is dead", "is it dead"];
-const laughWords = ["lol", "lmao", "haha"];
+const swearWords = ["fuck","shit","wtf"];
+const deathWords = ["death","dead","die"];
+const boredWords = ["boring","dead chat","this is dead","is it dead"];
+const laughWords = ["lol","lmao","haha"];
 
-const swearReplies = [
-  "shut the fuck up",
-  "who hurt you",
-  "language.",
-  "relax.",
-  "you sound emotional"
-];
+const swearReplies = ["shut the fuck up","who hurt you","language.","relax.","you sound emotional"];
+const deathReplies = ["💀","well that got dark","bro…","we will remember you.","noted.","that sounded final."];
+const boredReplies = ["then revive it","be the content","skill issue","you are the problem","entertain us then"];
+const laughReplies = ["was it that funny","bro is laughing alone","ok comedian"];
 
-const deathReplies = [
-  "💀",
-  "well that got dark",
-  "bro…",
-  "we will remember you.",
-  "noted.",
-  "that sounded final."
-];
-
-const boredReplies = [
-  "then revive it",
-  "be the content",
-  "skill issue",
-  "you are the problem",
-  "entertain us then"
-];
-
-const laughReplies = [
-  "was it that funny",
-  "bro is laughing alone",
-  "ok comedian"
-];
-
-const greetingReplies = [
-  "hello human",
-  "yo",
-  "hey.",
-  "hi.",
-  "bye.",
-  "not now."
-];
+const greetingReplies = ["hello human","yo","hey.","hi.","bye.","not now."];
 
 const mentionReplies = [
-  "what do you need",
-  "I’m here",
-  "what.",
-  "you again",
-  "make it quick",
-  "this better be important",
-  "this feels illegal",
-  "you shouldn’t have.",
-  "no",
-  "ask someone else",
-  "processing… nope"
+  "what do you need","I’m here","what.","you again",
+  "make it quick","this better be important","this feels illegal",
+  "no","ask someone else","processing… nope"
 ];
 
 const insultReplies = [
-  "watch how you talk to me.",
-  "you’re getting bold.",
-  "say it again.",
-  "you’re not in the position to talk like that.",
-  "careful.",
-  "keep going. this is interesting.",
-  "you don’t talk like that twice."
+  "watch how you talk to me.","you’re getting bold.","say it again.",
+  "you’re not in the position to talk like that.","careful.",
+  "keep going. this is interesting.","you don’t talk like that twice."
 ];
 
 const rareReplies = [
-  "I’m always watching.",
-  "interesting.",
-  "you do this often.",
-  "predictable.",
-  "I’ve seen worse.",
-  "not your best moment."
+  "I’m always watching.","interesting.","you do this often.",
+  "predictable.","I’ve seen worse.","not your best moment."
 ];
 
-function random(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
+function random(arr){return arr[Math.floor(Math.random()*arr.length)];}
 
 // ================= FLAGS =================
-
 const flags = [
 { name:"afghanistan",aliases:[],url:"https://flagcdn.com/w320/af.png"},
 { name:"albania",aliases:[],url:"https://flagcdn.com/w320/al.png"},
@@ -217,156 +183,120 @@ const flags = [
 { name:"vietnam",aliases:[],url:"https://flagcdn.com/w320/vn.png"}
 ];
 
-// ================= REST SAME (UNCHANGED GAME LOGIC) =================
+// ================= SLASH =================
+const commands = [
+  new SlashCommandBuilder().setName("leaderboard").setDescription("Show leaderboard"),
+  new SlashCommandBuilder().setName("hint").setDescription("Get hint"),
+  new SlashCommandBuilder()
+    .setName("mode")
+    .setDescription("Set mode")
+    .addStringOption(o=>o.setName("type").setRequired(true)
+      .addChoices({name:"easy",value:"easy"},{name:"hard",value:"hard"}))
+].map(c=>c.toJSON());
 
-let currentFlag = null;
-let roundActive = false;
-let scores = {};
+const rest = new REST({version:"10"}).setToken(process.env.TOKEN);
+(async()=>{await rest.put(Routes.applicationCommands(CLIENT_ID),{body:commands});})();
 
-if (fs.existsSync("scores.json")) {
-  scores = JSON.parse(fs.readFileSync("scores.json"));
+// ================= GAME =================
+let currentFlag=null,roundActive=false,scores={},streaks={},currentMessage=null;
+if(fs.existsSync("scores.json"))scores=JSON.parse(fs.readFileSync("scores.json"));
+
+function getHint(n){return mode==="easy"?`💡 Starts with ${n[0].toUpperCase()} (${n.length})`:`💡 First: ${n[0].toUpperCase()}`;}
+
+async function startRound(){
+  if(roundActive)return;
+  const ch=await client.channels.fetch(CHANNEL_ID);
+  const f=flags[Math.floor(Math.random()*flags.length)];
+  currentFlag=f;roundActive=true;
+  const e=new EmbedBuilder().setTitle(`🌍 Guess (${mode})`).setImage(f.url).setColor(Colors.Blue);
+  currentMessage=await ch.send({embeds:[e]});
+  setTimeout(endRound,ROUND_TIME);
 }
 
-let streaks = {};
-let currentMessage = null;
-
-function getHint(name) {
-  return mode === "easy"
-    ? `💡 Starts with ${name[0].toUpperCase()} (${name.length} letters)`
-    : `💡 First letter: ${name[0].toUpperCase()}`;
+async function endRound(){
+  if(!roundActive)return;
+  roundActive=false;
+  await currentMessage.edit({embeds:[new EmbedBuilder().setTitle("Time up").setDescription(currentFlag.name).setColor(Colors.Grey)]});
+  currentFlag=null;
 }
 
-async function startRound() {
-  if (roundActive) return;
-  const channel = await client.channels.fetch(CHANNEL_ID);
-  const randomFlag = flags[Math.floor(Math.random() * flags.length)];
-  currentFlag = randomFlag;
-  roundActive = true;
-
-  const embed = new EmbedBuilder()
-    .setTitle(`🌍 Guess the flag! (${mode.toUpperCase()})`)
-    .setImage(randomFlag.url)
-    .setColor(Colors.Blue)
-    .setFooter({ text: "⏳ 30s | !hint" });
-
-  currentMessage = await channel.send({ embeds: [embed] });
-  setTimeout(endRound, ROUND_TIME);
-}
-
-async function endRound() {
-  if (!roundActive) return;
-  roundActive = false;
-
-  const embed = new EmbedBuilder()
-    .setTitle("⏰ Time’s up!")
-    .setDescription(`Answer: **${currentFlag.name}**`)
-    .setColor(Colors.Grey)
-    .setImage(currentMessage.embeds[0].image.url);
-
-  await currentMessage.edit({ embeds: [embed] });
-  currentFlag = null;
-}
-
-client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
-  const content = message.content.toLowerCase();
-
-  if (content.includes("mili") && (content.includes("fuck") || content.includes("die"))) {
-    return message.channel.send(random(insultReplies));
+// ================= EVENTS =================
+client.on("interactionCreate",async i=>{
+  if(!i.isChatInputCommand())return;
+  if(i.commandName==="leaderboard"){
+    const s=Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    return i.reply(s.map(([id,v],k)=>`${k+1}. <@${id}> - ${v}`).join("\n")||"No scores");
   }
-
-  if (content.includes("mili")) {
-    return message.channel.send(random(mentionReplies));
-  }
-
-  if (swearWords.some(w => content.includes(w)) && Math.random() < 0.4) {
-    return message.channel.send(random(swearReplies));
-  }
-
-  if (deathWords.some(w => content.includes(w)) && Math.random() < 0.4) {
-    return message.channel.send(random(deathReplies));
-  }
-
-  if (boredWords.some(w => content.includes(w))) {
-    return message.channel.send(random(boredReplies));
-  }
-
-  if (laughWords.some(w => content.includes(w))) {
-    laughCount++;
-    if (laughCount >= 3) {
-      laughCount = 0;
-      return message.channel.send(random(laughReplies));
-    }
-  }
-
-  if (["hi","hello","hey"].includes(content)) {
-    greetingCount++;
-    if (greetingCount >= 5) {
-      greetingCount = 0;
-      return message.channel.send(random(greetingReplies));
-    }
-  }
-
-  if (Math.random() < 0.02) {
-    return message.channel.send(random(rareReplies));
-  }
-
-  if (content === "!leaderboard") {
-    const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    if (!sorted.length) return message.channel.send("No scores yet!");
-    return message.channel.send(sorted.map(([id,s],i)=>`${i+1}. <@${id}> - ${s}`).join("\n"));
-  }
-
-  if (content.startsWith("!mode")) {
-    mode = content.includes("hard") ? "hard" : "easy";
-    return message.channel.send(`Mode set to ${mode}`);
-  }
-
-  if (content === "!hint" && roundActive) {
-    return message.channel.send(getHint(currentFlag.name));
-  }
-
-  if (!roundActive) return;
-
-  if (content === currentFlag.name || currentFlag.aliases.includes(content)) {
-    roundActive = false;
-    const userId = message.author.id;
-    streaks[userId] = (streaks[userId] || 0) + 1;
-    let points = streaks[userId] >= 3 ? 2 : 1;
-    scores[userId] = (scores[userId] || 0) + points;
-    fs.writeFileSync("scores.json", JSON.stringify(scores,null,2));
-
-    await message.react("✅");
-
-    const embed = new EmbedBuilder()
-      .setTitle("🏆 Correct!")
-      .setDescription(`${message.author} got it!\n\nAnswer: ${currentFlag.name}\n+${points} points\n🔥 Streak: ${streaks[userId]}\nTotal: ${scores[userId]}`)
-      .setColor(Colors.Green)
-      .setImage(currentMessage.embeds[0].image.url);
-
-    await currentMessage.edit({ embeds:[embed] });
-    currentFlag = null;
-  } else {
-    await message.react("❌");
-  }
+  if(i.commandName==="mode"){mode=i.options.getString("type");return i.reply(`Mode: ${mode}`);}
+  if(i.commandName==="hint"){if(!roundActive)return i.reply("No round");return i.reply(getHint(currentFlag.name));}
 });
 
-client.once("clientReady", () => {
-  console.log(`Logged in as ${client.user.tag}`);
-  client.user.setPresence({
-    activities:[{name:"Guess the flags 🌍"}],
-    status:"online"
-  });
-  startRound();
-  setInterval(startRound, FLAG_INTERVAL);
-});
-client.on("guildCreate", (guild) => {
-  const allowedServer = "1434221318005588061";
+client.on("messageCreate",async m=>{
+  if(m.author.bot)return;
+  const c=m.content.toLowerCase(),id=m.author.id;
 
-  if (guild.id !== allowedServer) {
-    console.log(`Left unauthorized server: ${guild.name}`);
-    guild.leave();
+  if(convoCooldown[id]&&Date.now()-convoCooldown[id]<15000)return;
+
+  if(c.includes("mili")&&(c.includes("love")||c.includes("ily"))){
+    startConvo(id);convoCooldown[id]=Date.now();
+    return m.channel.send(random(loveReplies));
   }
+
+  if(c.includes("mili")&&c.includes("hate")){
+    startConvo(id);convoCooldown[id]=Date.now();
+    return m.channel.send(random(hateReplies));
+  }
+
+  if(c.includes("mili")&&(c.includes("fuck")||c.includes("die")))
+    return m.channel.send(random(insultReplies));
+
+  if(c.includes("mili")&&!activeConvos[id]){
+    startConvo(id);convoCooldown[id]=Date.now();
+    return m.channel.send(random(convoStarters));
+  }
+
+  if(activeConvos[id]){
+    const cv=activeConvos[id];cv.step++;
+    if(Math.random()>0.7){delete activeConvos[id];return;}
+    if(cv.step>=cv.max){delete activeConvos[id];return m.channel.send(random(convoEnders));}
+    return m.channel.send(random(convoReplies));
+  }
+
+  if(swearWords.some(w=>c.includes(w))&&Math.random()<0.4) return m.channel.send(random(swearReplies));
+  if(deathWords.some(w=>c.includes(w))&&Math.random()<0.4) return m.channel.send(random(deathReplies));
+  if(boredWords.some(w=>c.includes(w))) return m.channel.send(random(boredReplies));
+
+  if(laughWords.some(w=>c.includes(w))){
+    laughCount++; if(laughCount>=3){laughCount=0;return m.channel.send(random(laughReplies));}
+  }
+
+  if(["hi","hello","hey"].includes(c)){
+    greetingCount++; if(greetingCount>=5){greetingCount=0;return m.channel.send(random(greetingReplies));}
+  }
+
+  if(Math.random()<0.02) return m.channel.send(random(rareReplies));
+
+  if(!roundActive)return;
+
+  if(c===currentFlag.name||currentFlag.aliases.includes(c)){
+    roundActive=false;
+    streaks[id]=(streaks[id]||0)+1;
+    let p=streaks[id]>=3?2:1;
+    scores[id]=(scores[id]||0)+p;
+    fs.writeFileSync("scores.json",JSON.stringify(scores,null,2));
+    await m.react("✅"); currentFlag=null;
+  } else await m.react("❌");
+});
+
+client.once("clientReady",()=>{
+  console.log(`Logged as ${client.user.tag}`);
+  client.user.setPresence({activities:[{name:"Guess flags 🌍"}],status:"online"});
+  startRound(); setInterval(startRound,FLAG_INTERVAL);
+});
+
+client.on("guildCreate",g=>{
+  const allowed="1434221318005588061";
+  if(g.id!==allowed)g.leave();
 });
 
 client.login(process.env.TOKEN);
