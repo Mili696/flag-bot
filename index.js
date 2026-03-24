@@ -238,12 +238,19 @@ const commands = [
   new SlashCommandBuilder()
     .setName("blacklist")
     .setDescription("Toggle blacklist")
-    .addUserOption(o => o.setName("user").setRequired(true)),
+    .addUserOption(o =>
+  o.setName("user")
+   .setDescription("User to target")
+   .setRequired(true)
+)
   new SlashCommandBuilder().setName("cookies").setDescription("See cookies"),
   new SlashCommandBuilder()
     .setName("tag")
     .setDescription("See labels")
-    .addUserOption(o => o.setName("user"))
+   .addUserOption(o =>
+  o.setName("user")
+   .setDescription("User to check")
+)
 ].map(c => c.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
