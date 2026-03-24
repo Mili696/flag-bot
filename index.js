@@ -273,8 +273,6 @@ client.on("messageCreate", async msg => {
   const content = msg.content.toLowerCase();
   const user = getUser(msg.author.id, msg.author.username);
 
-  if (Date.now() - user.lastReply < 10000) return;
-
   // cookie
   if (triggers.cookie.some(w => content.includes(w))) {
     user.cookies++;
@@ -287,7 +285,6 @@ client.on("messageCreate", async msg => {
   // insult milly
   if (content.includes("mili") && triggers.swearing.some(w => content.includes(w))) {
     user.score -= 5;
-    user.lastReply = Date.now();
     updateLabels(user);
     save();
     return msg.reply(rand(insultMilly));
