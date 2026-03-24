@@ -234,23 +234,31 @@ function pickReply(user) {
 
 // ===== COMMANDS =====
 const commands = [
-  new SlashCommandBuilder().setName("help").setDescription("Milly guide"),
+  new SlashCommandBuilder()
+    .setName("help")
+    .setDescription("Milly guide"),
+
   new SlashCommandBuilder()
     .setName("blacklist")
     .setDescription("Toggle blacklist")
     .addUserOption(o =>
-  o.setName("user")
-   .setDescription("User to target")
-   .setRequired(true)
-)
-  new SlashCommandBuilder().setName("cookies").setDescription("See cookies"),
+      o.setName("user")
+       .setDescription("User to target")
+       .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("cookies")
+    .setDescription("See cookies"),
+
   new SlashCommandBuilder()
     .setName("tag")
     .setDescription("See labels")
-   .addUserOption(o =>
-  o.setName("user")
-   .setDescription("User to check")
-)
+    .addUserOption(o =>
+      o.setName("user")
+       .setDescription("User to check")
+       .setRequired(false)
+    )
 ].map(c => c.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(TOKEN);
