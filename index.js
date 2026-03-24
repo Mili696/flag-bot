@@ -269,7 +269,9 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
 // ===== MESSAGE =====
 client.on("messageCreate", async msg => {
   if (msg.author.bot) return;
-
+if (msg.mentions.users.size > 0 && !msg.mentions.has(client.user.id)) {
+  return;
+}
   const content = msg.content.toLowerCase();
   const user = getUser(msg.author.id, msg.author.username);
 
@@ -315,10 +317,11 @@ client.on("messageCreate", async msg => {
   }
 
   // random
- if (Math.random() < 0.25 && msg.mentions.users.size === 0)
-    user.lastReply = Date.now();
-    return msg.reply(pickReply(user));
-  }
+// random
+if (Math.random() < 0.25 && msg.mentions.users.size === 0) {
+  user.lastReply = Date.now();
+  return msg.reply(pickReply(user));
+}
 
   save();
 });
