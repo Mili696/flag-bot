@@ -315,7 +315,7 @@ client.on("messageCreate", async msg => {
   }
 
   // random
-  if (Math.random() < 0.25) {
+ if (Math.random() < 0.25 && msg.mentions.users.size === 0)
     user.lastReply = Date.now();
     return msg.reply(pickReply(user));
   }
