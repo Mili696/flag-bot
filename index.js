@@ -158,62 +158,59 @@ const bored = [
 
 const greetings = [
 "You again.",
-"Hello. Try not to ruin it.",
-"Hey. Keep it interesting.",
+"Hello",
+"no.",
 "Hi. Let’s see how this goes.",
 "You showed up. Good.",
 "Morning. Don’t be boring.",
-"Hello. Impress me.",
-"Hi. I’ll tolerate you.",
+"Go back to sleep bruh.",
+"hi human",
 "You’re here. Noted.",
-"Hey. Continue."
+"you woke me up."
 ];
 
 const laugh = [
 "That almost got me.",
-"I’ll allow it.",
-"Not bad.",
+"yes..hahahaah",
+"laugh more, suits you.",
 "I get it.",
 "You’re enjoying this too much.",
-"That worked somehow.",
 "You’re easily entertained.",
-"That landed.",
-"I expected worse.",
-"I noticed."
+"ok?",
+"D'ont laugh",
 ];
 
 const cookieReplies = [
-"Another one. You’re building a problem.",
+"Another one?",
 "That’s a lot of cookies.",
 "You’re collecting these like it matters.",
 "I’m keeping count.",
 "You’re not sharing.",
-"This is getting excessive.",
-"You’re committed.",
+"This is too much...",
 "You again with cookies.",
 "At this point it’s a habit.",
-"Keep going. I’m judging."
+"Keep going. If it makes u happy."
 ];
 
 const insultMilly = [
-"Careful who you’re talking to.",
+"sybau",
 "You don’t get to talk like that.",
 "Fix your tone.",
 "I won’t repeat myself.",
-"You’re out of line.",
+"language kiddo.",
 "You picked the wrong target.",
 "Don’t test me.",
 "I can shut this down quickly.",
-"You’re not in control here.",
-"Watch yourself."
+"You think u're better than me?",
+"Watch it."
 ];
 
 // ===== TRIGGERS =====
 const triggers = {
-  swearing: ["fuck","shit","wtf","hoe","whore","faggot","asshole","dumbass","idiot","moron","stfu"],
+  swearing: ["fuck","shit","wtf","hoe","whore","faggot","asshole","dumbass","idiot","moron","stfu","sybau","nigga"],
   dark: ["death","dead","die","jump","end it","life sucks"],
   bored: ["boring","dead chat","is it dead","quiet","dry chat"],
-  laugh: ["lol","lmao","haha","funny","im dying"],
+  laugh: ["lol","haha","funny","im dying"],
   greet: ["hi","hello","hey","morning","goodmorning","yo","sup"],
   cookie: ["cookie"]
 };
@@ -274,7 +271,7 @@ if (msg.mentions.users.size > 0 && !msg.mentions.has(client.user.id)) {
 }
   const content = msg.content.toLowerCase();
   const user = getUser(msg.author.id, msg.author.username);
-
+if (Date.now() - user.lastReply < 5000) return;
   // cookie
   if (triggers.cookie.some(w => content.includes(w))) {
     user.cookies++;
