@@ -293,10 +293,14 @@ if (msg.mentions.users.size > 0 && !msg.mentions.has(client.user.id)) {
   }
 
   // greet
-  if (triggers.greet.some(w => content.includes(w))) {
-    user.lastReply = Date.now();
-    return msg.reply(rand(greetings));
-  }
+ // greet
+if (triggers.greet.some(w => content.includes(w))) {
+  user.score += 1; 
+  user.lastReply = Date.now();
+  updateLabels(user);
+  save();
+  return msg.reply(rand(greetings));
+}
 
   // laugh
   if (triggers.laugh.some(w => content.includes(w))) {
